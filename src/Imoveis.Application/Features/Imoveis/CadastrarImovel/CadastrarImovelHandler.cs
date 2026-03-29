@@ -1,5 +1,6 @@
 using FluentValidation;
 using Imoveis.Application.Common;
+using Imoveis.Application.Common.Logging;
 using Imoveis.Domain.Entities;
 using Imoveis.Domain.Interfaces;
 using Imoveis.Domain.ValueObjects;
@@ -50,9 +51,7 @@ public class CadastrarImovelHandler
                     $"CEP '{command.Cep}' não encontrado. Verifique o CEP informado.");
 
             case ConsultarCepResultado.ServicoIndisponivel ind:
-                _logger.LogWarning(
-                    "Falha ao consultar CEP {Cep} durante cadastro de imóvel: {Detalhe}",
-                    command.Cep, ind.Detalhe);
+                _logger.CepIndisponivelNoCadastro(command.Cep, ind.Detalhe);
                 return Result<CadastrarImovelResponse>.Falha(
                     "Serviço de consulta de CEP temporariamente indisponível. Tente novamente em instantes.");
         }
@@ -82,8 +81,7 @@ public class CadastrarImovelHandler
 
         _invalidador.Invalidar();
 
-        _logger.LogInformation(
-            "Imóvel cadastrado: {ImovelId} - {Titulo} | {Logradouro}, {Numero} - {Cidade}/{Estado}",
+        _logger.ImovelCadastrado(
             imovel.Id, imovel.Titulo,
             endereco.Logradouro, endereco.Numero,
             endereco.Cidade, endereco.Estado);

@@ -1,4 +1,5 @@
 using Imoveis.Application.Common;
+using Imoveis.Application.Common.Logging;
 using Imoveis.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -36,7 +37,7 @@ public class ConsultarImoveisHandler
 
         if (_cache.TryGetValue(cacheKey, out ConsultarImoveisResponse? cached))
         {
-            _logger.LogInformation("Cache hit — lista de imóveis");
+            _logger.CacheHitLista();
             return Result<ConsultarImoveisResponse>.Ok(cached!);
         }
 
@@ -68,10 +69,8 @@ public class ConsultarImoveisHandler
                 i.Endereco.Cidade, i.Endereco.Estado, i.Preco, i.AreaM2, i.Quartos, i.CriadoEm))
             .ToListAsync(ct);
 
-        _logger.LogInformation(
-            "Consulta de imóveis: {Filtros} — {Total} resultado(s)",
-            new { query.Cidade, query.Tipo, query.PrecoMin, query.PrecoMax },
-            total);
+        _logger.ConsultaImoveisRealizada(
+            query.Cidade, query.Tipo?.ToString(), query.PrecoMin, query.PrecoMax, total);
 
         var response = new ConsultarImoveisResponse(imoveis, total, query.Pagina, query.TamanhoPagina);
 

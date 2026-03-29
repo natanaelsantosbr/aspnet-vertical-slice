@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using Imoveis.Domain.Interfaces;
 using Imoveis.Domain.ValueObjects;
+using Imoveis.Infrastructure.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace Imoveis.Infrastructure.Integrations.ViaCep;
@@ -28,11 +29,11 @@ public class ViaCepClient : ICepService
 
         if (cepLimpo.Length != 8)
         {
-            _logger.LogWarning("CEP com formato inválido ignorado antes da chamada externa: {Cep}", cep);
+            _logger.CepFormatoInvalido(cep);
             return new ConsultarCepResultado.NaoEncontrado();
         }
 
-        _logger.LogInformation("Consultando CEP {Cep} no ViaCEP", cepLimpo);
+        _logger.ConsultandoCep(cepLimpo);
 
         try
         {
@@ -40,9 +41,7 @@ public class ViaCepClient : ICepService
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning(
-                    "ViaCEP retornou {StatusCode} para CEP {Cep}",
-                    (int)response.StatusCode, cepLimpo);
+                _logger.ViaCepStatusCodeInesperado((int)response.StatusCode, cepLimpo);
 
                 return new ConsultarCepResultado.ServicoIndisponivel(
                     $"ViaCEP retornou HTTP {(int)response.StatusCode}");
@@ -54,13 +53,11 @@ public class ViaCepClient : ICepService
             // ViaCEP retorna { "erro": "true" } quando o CEP não existe
             if (dto is null || string.Equals(dto.Erro, "true", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning("CEP {Cep} não encontrado no ViaCEP", cepLimpo);
+                _logger.CepNaoEncontrado(cepLimpo);
                 return new ConsultarCepResultado.NaoEncontrado();
             }
 
-            _logger.LogInformation(
-                "CEP {Cep} resolvido: {Logradouro}, {Cidade}/{Estado}",
-                cepLimpo, dto.Logradouro, dto.Cidade, dto.Estado);
+            _logger.CepResolvido(cepLimpo, dto.Logradouro, dto.Cidade, dto.Estado);
 
             return new ConsultarCepResultado.Encontrado(
                 Cep: cepLimpo,
@@ -72,7 +69,7 @@ public class ViaCepClient : ICepService
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
             // Timeout do próprio HttpClient ou do pipeline de resiliência
-            _logger.LogWarning("Timeout ao consultar CEP {Cep} no ViaCEP", cepLimpo);
+            _logger.ViaCepTimeout(cepLimpo);
             return new ConsultarCepResultado.ServicoIndisponivel("Timeout na consulta ao ViaCEP");
         }
         catch (OperationCanceledException)
@@ -82,7 +79,7 @@ public class ViaCepClient : ICepService
         catch (Exception ex)
         {
             // Captura HttpRequestException, BrokenCircuitException (Polly) e demais falhas
-            _logger.LogError(ex, "Falha ao consultar CEP {Cep} no ViaCEP", cepLimpo);
+            _logger.ViaCepFalha(ex, cepLimpo);
             return new ConsultarCepResultado.ServicoIndisponivel(ex.Message);
         }
     }

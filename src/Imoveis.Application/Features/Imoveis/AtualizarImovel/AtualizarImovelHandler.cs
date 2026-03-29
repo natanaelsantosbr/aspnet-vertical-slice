@@ -1,5 +1,6 @@
 using FluentValidation;
 using Imoveis.Application.Common;
+using Imoveis.Application.Common.Logging;
 using Imoveis.Domain.Interfaces;
 using Imoveis.Domain.ValueObjects;
 using Imoveis.Infrastructure.Data;
@@ -62,9 +63,7 @@ public class AtualizarImovelHandler
                     $"CEP '{command.Cep}' não encontrado. Verifique o CEP informado.");
 
             case ConsultarCepResultado.ServicoIndisponivel ind:
-                _logger.LogWarning(
-                    "Falha ao consultar CEP {Cep} durante atualização do imóvel {ImovelId}: {Detalhe}",
-                    command.Cep, command.Id, ind.Detalhe);
+                _logger.CepIndisponivelNaAtualizacao(command.Cep, command.Id, ind.Detalhe);
                 return Result<bool>.Falha(
                     "Serviço de consulta de CEP temporariamente indisponível. Tente novamente em instantes.");
         }
@@ -94,7 +93,7 @@ public class AtualizarImovelHandler
         _cache.Remove(ImovelCacheKeys.PorId(command.Id));
         _invalidador.Invalidar();
 
-        _logger.LogInformation("Imóvel atualizado: {ImovelId}", imovel.Id);
+        _logger.ImovelAtualizado(imovel.Id);
 
         return Result<bool>.Ok(true);
     }

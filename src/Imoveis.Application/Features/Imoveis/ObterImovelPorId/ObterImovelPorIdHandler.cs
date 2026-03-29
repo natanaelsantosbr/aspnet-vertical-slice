@@ -1,4 +1,5 @@
 using Imoveis.Application.Common;
+using Imoveis.Application.Common.Logging;
 using Imoveis.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -29,7 +30,7 @@ public class ObterImovelPorIdHandler
 
         if (_cache.TryGetValue(cacheKey, out ObterImovelPorIdResponse? cached))
         {
-            _logger.LogInformation("Cache hit — imóvel {ImovelId}", query.Id);
+            _logger.CacheHitPorId(query.Id);
             return Result<ObterImovelPorIdResponse>.Ok(cached!);
         }
 
@@ -46,7 +47,7 @@ public class ObterImovelPorIdHandler
 
         if (imovel is null)
         {
-            _logger.LogWarning("Imóvel não encontrado: {ImovelId}", query.Id);
+            _logger.ImovelNaoEncontrado(query.Id);
             return Result<ObterImovelPorIdResponse>.Falha("Imóvel não encontrado.");
         }
 

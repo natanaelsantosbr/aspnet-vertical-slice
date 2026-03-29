@@ -1,4 +1,5 @@
 using Imoveis.Application.Common;
+using Imoveis.Application.Common.Logging;
 using Imoveis.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -35,7 +36,10 @@ public class RemoverImovelHandler
             return Result<bool>.Falha("Imóvel não encontrado.");
 
         if (!imovel.Ativo)
+        {
+            _logger.ImovelJaInativo(command.Id);
             return Result<bool>.Falha("Imóvel já está inativo.");
+        }
 
         imovel.Desativar();
         await _db.SaveChangesAsync(ct);
@@ -43,7 +47,7 @@ public class RemoverImovelHandler
         _cache.Remove(ImovelCacheKeys.PorId(command.Id));
         _invalidador.Invalidar();
 
-        _logger.LogInformation("Imóvel removido (soft delete): {ImovelId}", imovel.Id);
+        _logger.ImovelRemovido(imovel.Id);
 
         return Result<bool>.Ok(true);
     }

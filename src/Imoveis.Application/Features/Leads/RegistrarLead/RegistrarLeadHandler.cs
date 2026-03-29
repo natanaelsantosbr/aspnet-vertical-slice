@@ -1,5 +1,6 @@
 using FluentValidation;
 using Imoveis.Application.Common;
+using Imoveis.Application.Common.Logging;
 using Imoveis.Domain.Entities;
 using Imoveis.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -50,9 +51,7 @@ public class RegistrarLeadHandler
         _db.Leads.Add(lead);
         await _db.SaveChangesAsync(ct);
 
-        _logger.LogInformation(
-            "Lead registrado: {LeadId} | Imóvel: {ImovelId} | Contato: {Email}",
-            lead.Id, command.ImovelId, command.Email);
+        _logger.LeadRegistrado(lead.Id, command.ImovelId, command.Email);
 
         return Result<RegistrarLeadResponse>.Ok(new RegistrarLeadResponse(lead.Id));
     }

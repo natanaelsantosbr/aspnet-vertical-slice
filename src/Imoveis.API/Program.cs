@@ -6,6 +6,7 @@ using Imoveis.Application.Features.Imoveis.ConsultarImoveis;
 using Imoveis.Application.Features.Imoveis.ObterImovelPorId;
 using Imoveis.Application.Features.Imoveis.RemoverImovel;
 using Imoveis.Application.Features.Leads.RegistrarLead;
+using Imoveis.API.Middleware;
 using Imoveis.Infrastructure;
 using Imoveis.Infrastructure.Data;
 using Imoveis.Infrastructure.HealthChecks;
@@ -13,6 +14,10 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ─── Exception handling ───────────────────────────────────────────────────────
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
 builder.Services.AddMemoryCache();
@@ -63,6 +68,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.MapControllers();
 

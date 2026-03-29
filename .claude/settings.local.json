@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(cd \"C:\\\\Users\\\\Usuario\\\\source\\\\repos\\\\Imoveis\" && dotnet restore 2>&1 | tail -5)",
-      "Bash(cd \"C:\\\\Users\\\\Usuario\\\\source\\\\repos\\\\Imoveis\" && dotnet restore --force 2>&1 | tail -10 && dotnet build 2>&1)"
+      "Bash(cd \"C:\\\\Users\\\\Usuario\\\\source\\\\repos\\\\Imoveis\" && dotnet restore --force 2>&1 | tail -10 && dotnet build 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\Usuario\\\\source\\\\repos\\\\Imoveis\" && dotnet build --no-restore 2>&1 | tail -30)"
     ]
   }
 }
