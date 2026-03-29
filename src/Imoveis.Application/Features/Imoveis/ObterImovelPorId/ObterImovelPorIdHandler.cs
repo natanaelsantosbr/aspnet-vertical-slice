@@ -1,18 +1,23 @@
 using Imoveis.Application.Common;
 using Imoveis.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace Imoveis.Application.Features.Imoveis.ObterImovelPorId;
 
 public class ObterImovelPorIdHandler
 {
+    private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(10);
+
     private readonly AppDbContext _db;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<ObterImovelPorIdHandler> _logger;
 
-    public ObterImovelPorIdHandler(AppDbContext db, ILogger<ObterImovelPorIdHandler> logger)
+    public ObterImovelPorIdHandler(AppDbContext db, IMemoryCache cache, ILogger<ObterImovelPorIdHandler> logger)
     {
         _db = db;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -20,6 +25,14 @@ public class ObterImovelPorIdHandler
         ObterImovelPorIdQuery query,
         CancellationToken ct = default)
     {
+        var cacheKey = ImovelCacheKeys.PorId(query.Id);
+
+        if (_cache.TryGetValue(cacheKey, out ObterImovelPorIdResponse? cached))
+        {
+            _logger.LogInformation("Cache hit — imóvel {ImovelId}", query.Id);
+            return Result<ObterImovelPorIdResponse>.Ok(cached!);
+        }
+
         var imovel = await _db.Imoveis
             .AsNoTracking()
             .Where(i => i.Id == query.Id)
@@ -35,6 +48,7 @@ public class ObterImovelPorIdHandler
             return Result<ObterImovelPorIdResponse>.Falha("Imóvel não encontrado.");
         }
 
+        _cache.Set(cacheKey, imovel, Ttl);
         return Result<ObterImovelPorIdResponse>.Ok(imovel);
     }
 }

@@ -14,6 +14,7 @@ API REST para gerenciamento de imóveis, construída com **ASP.NET Core 8** segu
 - [Como rodar](#como-rodar)
 - [Endpoints](#endpoints)
 - [Exemplos de uso](#exemplos-de-uso)
+- [Cache](#cache)
 - [Configuração do banco de dados](#configuração-do-banco-de-dados)
 - [Decisões de design](#decisões-de-design)
 
@@ -28,6 +29,7 @@ API REST para gerenciamento de imóveis, construída com **ASP.NET Core 8** segu
 | [Entity Framework Core 8](https://docs.microsoft.com/ef/core) | ORM |
 | [EF Core InMemory](https://docs.microsoft.com/ef/core/providers/in-memory) | Banco de dados para desenvolvimento |
 | [SQL Server](https://www.microsoft.com/sql-server) | Banco de dados para produção |
+| [IMemoryCache](https://docs.microsoft.com/aspnet/core/performance/caching/memory) | Cache em memória (nativo do .NET) |
 | [FluentValidation](https://docs.fluentvalidation.net/) | Validação de entrada |
 | [Swagger / Swashbuckle](https://github.com/domaindrivendev/Swashbuckle.AspNetCore) | Documentação da API |
 
@@ -41,7 +43,7 @@ O projeto segue uma **Clean Architecture simplificada** com separação em 4 cam
 ┌─────────────────────────────────────────────┐
 │                  Imoveis.API                │  ← Controllers, Program.cs
 ├─────────────────────────────────────────────┤
-│             Imoveis.Application             │  ← Handlers, Commands, Queries, Validators, DTOs
+│             Imoveis.Application             │  ← Handlers, Commands, Queries, Validators, DTOs, Cache
 ├─────────────────────────────────────────────┤
 │             Imoveis.Infrastructure          │  ← DbContext, Configurações EF, SeedData
 ├─────────────────────────────────────────────┤
@@ -70,10 +72,10 @@ API → Application → Infrastructure → Domain
 src/
 ├── Imoveis.Domain/
 │   ├── Entities/
-│   │   ├── Imovel.cs           # Entidade principal com factory method
-│   │   └── Lead.cs             # Entidade de lead
+│   │   ├── Imovel.cs               # Entidade principal com factory method
+│   │   └── Lead.cs                 # Entidade de lead
 │   └── Enums/
-│       └── TipoImovel.cs       # Casa, Apartamento, Terreno, Comercial
+│       └── TipoImovel.cs           # Casa, Apartamento, Terreno, Comercial
 │
 ├── Imoveis.Infrastructure/
 │   ├── Data/
@@ -82,11 +84,13 @@ src/
 │   │   └── Configurations/
 │   │       ├── ImovelConfiguration.cs
 │   │       └── LeadConfiguration.cs
-│   └── DependencyInjection.cs  # Extensão para registrar infraestrutura
+│   └── DependencyInjection.cs      # Extensão para registrar infraestrutura
 │
 ├── Imoveis.Application/
 │   ├── Common/
-│   │   └── Result.cs           # Result<T> para tratamento de erros sem exceções
+│   │   ├── Result.cs               # Result<T> para tratamento de erros sem exceções
+│   │   ├── ImovelCacheKeys.cs      # Centraliza as chaves de cache
+│   │   └── ListaCacheInvalidador.cs # Invalida todas as listas via CancellationToken
 │   └── Features/
 │       ├── Imoveis/
 │       │   ├── CadastrarImovel/
@@ -95,19 +99,19 @@ src/
 │       │   │   └── CadastrarImovelValidator.cs
 │       │   ├── ConsultarImoveis/
 │       │   │   ├── ConsultarImoveisQuery.cs
-│       │   │   ├── ConsultarImoveisHandler.cs
+│       │   │   ├── ConsultarImoveisHandler.cs  # Lê/escreve no cache
 │       │   │   └── ImovelResumoDto.cs
 │       │   ├── ObterImovelPorId/
 │       │   │   ├── ObterImovelPorIdQuery.cs
 │       │   │   ├── ObterImovelPorIdDto.cs
-│       │   │   └── ObterImovelPorIdHandler.cs
+│       │   │   └── ObterImovelPorIdHandler.cs  # Lê/escreve no cache
 │       │   ├── AtualizarImovel/
 │       │   │   ├── AtualizarImovelCommand.cs
-│       │   │   ├── AtualizarImovelHandler.cs
+│       │   │   ├── AtualizarImovelHandler.cs   # Invalida cache ao salvar
 │       │   │   └── AtualizarImovelValidator.cs
 │       │   └── RemoverImovel/
 │       │       ├── RemoverImovelCommand.cs
-│       │       └── RemoverImovelHandler.cs
+│       │       └── RemoverImovelHandler.cs     # Invalida cache ao salvar
 │       └── Leads/
 │           └── RegistrarLead/
 │               ├── RegistrarLeadCommand.cs
@@ -167,13 +171,13 @@ https://localhost:{porta}/swagger
 
 ### Imóveis
 
-| Método | Rota | Descrição |
-|---|---|---|
-| `POST` | `/api/imoveis` | Cadastra um novo imóvel |
-| `GET` | `/api/imoveis` | Lista imóveis com filtros e paginação |
-| `GET` | `/api/imoveis/{id}` | Retorna um imóvel pelo Id |
-| `PUT` | `/api/imoveis/{id}` | Atualiza os dados de um imóvel |
-| `DELETE` | `/api/imoveis/{id}` | Remove um imóvel (soft delete) |
+| Método | Rota | Descrição | Cache |
+|---|---|---|---|
+| `POST` | `/api/imoveis` | Cadastra um novo imóvel | Invalida listas |
+| `GET` | `/api/imoveis` | Lista imóveis com filtros e paginação | 2 min |
+| `GET` | `/api/imoveis/{id}` | Retorna um imóvel pelo Id | 10 min |
+| `PUT` | `/api/imoveis/{id}` | Atualiza os dados de um imóvel | Invalida item + listas |
+| `DELETE` | `/api/imoveis/{id}` | Remove um imóvel (soft delete) | Invalida item + listas |
 
 ### Leads
 
@@ -319,6 +323,41 @@ Content-Type: application/json
 
 ---
 
+## Cache
+
+O projeto utiliza `IMemoryCache` (nativo do .NET, sem dependência externa) com invalidação automática por evento.
+
+### Comportamento por operação
+
+| Operação | Comportamento |
+|---|---|
+| `GET /imoveis/{id}` | Hit → retorna do cache. Miss → busca no banco e armazena por **10 min** |
+| `GET /imoveis` | Hit → retorna do cache. Miss → busca no banco e armazena por **2 min** |
+| `POST /imoveis` | Salva no banco → invalida todas as entradas de lista |
+| `PUT /imoveis/{id}` | Salva no banco → remove entrada do item específico + invalida listas |
+| `DELETE /imoveis/{id}` | Salva no banco → remove entrada do item específico + invalida listas |
+
+### Estratégia de invalidação das listas
+
+Como a consulta aceita múltiplos filtros, cada combinação diferente gera uma chave de cache distinta. Para invalidar todas essas entradas de uma vez sem iterar o cache, usamos o padrão `CancellationChangeToken`:
+
+1. Cada entrada de lista é armazenada com um token vinculado a um `CancellationTokenSource` compartilhado (gerenciado pelo `ListaCacheInvalidador`)
+2. Ao chamar `ListaCacheInvalidador.Invalidar()`, o token é cancelado — todas as entradas que dependem dele expiram imediatamente
+3. Um novo `CancellationTokenSource` é criado atomicamente via `Interlocked.Exchange` para as próximas entradas
+
+```
+POST/PUT/DELETE
+      │
+      ▼
+ListaCacheInvalidador.Invalidar()
+      │
+      ├─► CancellationTokenSource.Cancel()  ──► expira todas as listas em cache
+      │
+      └─► Interlocked.Exchange(ref _cts, new CancellationTokenSource())
+```
+
+---
+
 ## Configuração do banco de dados
 
 ### InMemory (padrão — desenvolvimento)
@@ -356,6 +395,9 @@ Os handlers são classes simples registradas no DI container. MediatR adiciona i
 
 ### Result&lt;T&gt; em vez de exceções
 Fluxos esperados — validação falhou, imóvel não encontrado — não são exceções. `Result<T>` força o código chamador a tratar esses casos explicitamente, tornando o fluxo de erro previsível e visível.
+
+### Cache sem biblioteca externa
+`IMemoryCache` é suficiente para cache local em processo. Se a aplicação escalar para múltiplas instâncias, troque por `IDistributedCache` com Redis — a interface dos handlers não muda, apenas a implementação registrada no DI.
 
 ### Soft delete no DELETE
 O endpoint `DELETE` desativa o imóvel (`Ativo = false`) em vez de removê-lo fisicamente. Leads associados são preservados e o histórico fica intacto.

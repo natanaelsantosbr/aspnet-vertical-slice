@@ -2,6 +2,7 @@ using FluentValidation;
 using Imoveis.Application.Common;
 using Imoveis.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace Imoveis.Application.Features.Imoveis.AtualizarImovel;
@@ -10,15 +11,21 @@ public class AtualizarImovelHandler
 {
     private readonly AppDbContext _db;
     private readonly IValidator<AtualizarImovelCommand> _validator;
+    private readonly IMemoryCache _cache;
+    private readonly ListaCacheInvalidador _invalidador;
     private readonly ILogger<AtualizarImovelHandler> _logger;
 
     public AtualizarImovelHandler(
         AppDbContext db,
         IValidator<AtualizarImovelCommand> validator,
+        IMemoryCache cache,
+        ListaCacheInvalidador invalidador,
         ILogger<AtualizarImovelHandler> logger)
     {
         _db = db;
         _validator = validator;
+        _cache = cache;
+        _invalidador = invalidador;
         _logger = logger;
     }
 
@@ -52,6 +59,9 @@ public class AtualizarImovelHandler
             command.Quartos);
 
         await _db.SaveChangesAsync(ct);
+
+        _cache.Remove(ImovelCacheKeys.PorId(command.Id));
+        _invalidador.Invalidar();
 
         _logger.LogInformation("Imóvel atualizado: {ImovelId}", imovel.Id);
 

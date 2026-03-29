@@ -34,6 +34,13 @@ Features/
 - **Erros esperados via `Result<T>`** — não use exceções para fluxos de negócio (not found, validação, etc.)
 - **Logging** nos handlers para operações relevantes (`LogInformation` para sucesso, `LogWarning` para not found)
 
+### Cache
+
+- Handlers de **leitura** (`ObterPorId`, `ConsultarImoveis`) devem checar o cache antes de ir ao banco
+- Handlers de **mutação** (`Cadastrar`, `Atualizar`, `Remover`) devem invalidar o cache após salvar no banco
+- Use `ImovelCacheKeys` para gerar chaves — nunca escreva strings de chave inline nos handlers
+- Para invalidar listas, use `ListaCacheInvalidador.Invalidar()` — não tente remover entradas de lista individualmente
+
 ### Commits
 
 Use mensagens de commit claras e no imperativo:

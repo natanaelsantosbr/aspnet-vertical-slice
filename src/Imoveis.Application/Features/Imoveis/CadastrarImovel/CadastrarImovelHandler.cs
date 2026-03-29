@@ -10,15 +10,18 @@ public class CadastrarImovelHandler
 {
     private readonly AppDbContext _db;
     private readonly IValidator<CadastrarImovelCommand> _validator;
+    private readonly ListaCacheInvalidador _invalidador;
     private readonly ILogger<CadastrarImovelHandler> _logger;
 
     public CadastrarImovelHandler(
         AppDbContext db,
         IValidator<CadastrarImovelCommand> validator,
+        ListaCacheInvalidador invalidador,
         ILogger<CadastrarImovelHandler> logger)
     {
         _db = db;
         _validator = validator;
+        _invalidador = invalidador;
         _logger = logger;
     }
 
@@ -45,6 +48,8 @@ public class CadastrarImovelHandler
 
         _db.Imoveis.Add(imovel);
         await _db.SaveChangesAsync(ct);
+
+        _invalidador.Invalidar();
 
         _logger.LogInformation("Imóvel cadastrado: {ImovelId} - {Titulo}", imovel.Id, imovel.Titulo);
 

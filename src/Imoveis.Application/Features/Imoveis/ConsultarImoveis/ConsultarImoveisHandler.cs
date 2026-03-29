@@ -1,18 +1,30 @@
 using Imoveis.Application.Common;
 using Imoveis.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 
 namespace Imoveis.Application.Features.Imoveis.ConsultarImoveis;
 
 public class ConsultarImoveisHandler
 {
+    private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(2);
+
     private readonly AppDbContext _db;
+    private readonly IMemoryCache _cache;
+    private readonly ListaCacheInvalidador _invalidador;
     private readonly ILogger<ConsultarImoveisHandler> _logger;
 
-    public ConsultarImoveisHandler(AppDbContext db, ILogger<ConsultarImoveisHandler> logger)
+    public ConsultarImoveisHandler(
+        AppDbContext db,
+        IMemoryCache cache,
+        ListaCacheInvalidador invalidador,
+        ILogger<ConsultarImoveisHandler> logger)
     {
         _db = db;
+        _cache = cache;
+        _invalidador = invalidador;
         _logger = logger;
     }
 
@@ -20,6 +32,14 @@ public class ConsultarImoveisHandler
         ConsultarImoveisQuery query,
         CancellationToken ct = default)
     {
+        var cacheKey = ImovelCacheKeys.Lista(query);
+
+        if (_cache.TryGetValue(cacheKey, out ConsultarImoveisResponse? cached))
+        {
+            _logger.LogInformation("Cache hit — lista de imóveis");
+            return Result<ConsultarImoveisResponse>.Ok(cached!);
+        }
+
         var queryable = _db.Imoveis
             .Where(i => i.Ativo)
             .AsNoTracking()
@@ -53,7 +73,16 @@ public class ConsultarImoveisHandler
             new { query.Cidade, query.Tipo, query.PrecoMin, query.PrecoMax },
             total);
 
-        return Result<ConsultarImoveisResponse>.Ok(
-            new ConsultarImoveisResponse(imoveis, total, query.Pagina, query.TamanhoPagina));
+        var response = new ConsultarImoveisResponse(imoveis, total, query.Pagina, query.TamanhoPagina);
+
+        // Vincula esta entrada ao token de invalidação das listas.
+        // Quando ListaCacheInvalidador.Invalidar() for chamado, esta entrada expira imediatamente.
+        var options = new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(Ttl)
+            .AddExpirationToken(new CancellationChangeToken(_invalidador.Token));
+
+        _cache.Set(cacheKey, response, options);
+
+        return Result<ConsultarImoveisResponse>.Ok(response);
     }
 }
