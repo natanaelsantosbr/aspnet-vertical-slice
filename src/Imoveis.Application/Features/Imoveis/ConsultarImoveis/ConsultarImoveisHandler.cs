@@ -46,7 +46,7 @@ public class ConsultarImoveisHandler
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(query.Cidade))
-            queryable = queryable.Where(i => i.Cidade.ToLower().Contains(query.Cidade.ToLower()));
+            queryable = queryable.Where(i => i.Endereco.Cidade.ToLower().Contains(query.Cidade.ToLower()));
 
         if (query.Tipo.HasValue)
             queryable = queryable.Where(i => i.Tipo == query.Tipo.Value);
@@ -64,8 +64,8 @@ public class ConsultarImoveisHandler
             .Skip((query.Pagina - 1) * query.TamanhoPagina)
             .Take(query.TamanhoPagina)
             .Select(i => new ImovelResumoDto(
-                i.Id, i.Titulo, i.Tipo, i.Cidade,
-                i.Estado, i.Preco, i.AreaM2, i.Quartos, i.CriadoEm))
+                i.Id, i.Titulo, i.Tipo, i.Endereco.Cep,
+                i.Endereco.Cidade, i.Endereco.Estado, i.Preco, i.AreaM2, i.Quartos, i.CriadoEm))
             .ToListAsync(ct);
 
         _logger.LogInformation(

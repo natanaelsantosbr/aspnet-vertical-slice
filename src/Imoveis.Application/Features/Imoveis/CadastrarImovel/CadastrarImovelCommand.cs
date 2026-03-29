@@ -6,8 +6,9 @@ public record CadastrarImovelCommand(
     string Titulo,
     string Descricao,
     TipoImovel Tipo,
-    string Cidade,
-    string Estado,
+    string Cep,
+    string Numero,
+    string? Complemento,
     decimal Preco,
     int AreaM2,
     int Quartos

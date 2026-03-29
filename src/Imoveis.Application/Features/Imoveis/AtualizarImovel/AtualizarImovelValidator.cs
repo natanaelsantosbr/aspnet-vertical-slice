@@ -17,13 +17,17 @@ public class AtualizarImovelValidator : AbstractValidator<AtualizarImovelCommand
             .NotEmpty().WithMessage("Descrição é obrigatória.")
             .MaximumLength(2000).WithMessage("Descrição deve ter no máximo 2000 caracteres.");
 
-        RuleFor(x => x.Cidade)
-            .NotEmpty().WithMessage("Cidade é obrigatória.")
-            .MaximumLength(100).WithMessage("Cidade deve ter no máximo 100 caracteres.");
+        RuleFor(x => x.Cep)
+            .NotEmpty().WithMessage("CEP é obrigatório.")
+            .Matches(@"^\d{8}$").WithMessage("CEP deve conter exatamente 8 dígitos (ex: 01310100).");
 
-        RuleFor(x => x.Estado)
-            .NotEmpty().WithMessage("Estado é obrigatório.")
-            .Length(2).WithMessage("Estado deve ter exatamente 2 caracteres (ex: SP, RJ).");
+        RuleFor(x => x.Numero)
+            .NotEmpty().WithMessage("Número é obrigatório.")
+            .MaximumLength(20).WithMessage("Número deve ter no máximo 20 caracteres.");
+
+        RuleFor(x => x.Complemento)
+            .MaximumLength(100).WithMessage("Complemento deve ter no máximo 100 caracteres.")
+            .When(x => x.Complemento is not null);
 
         RuleFor(x => x.Preco)
             .GreaterThan(0).WithMessage("Preço deve ser maior que zero.");

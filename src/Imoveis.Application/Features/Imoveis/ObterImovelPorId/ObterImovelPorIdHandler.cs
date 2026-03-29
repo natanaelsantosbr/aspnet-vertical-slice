@@ -38,8 +38,10 @@ public class ObterImovelPorIdHandler
             .Where(i => i.Id == query.Id)
             .Select(i => new ObterImovelPorIdResponse(
                 i.Id, i.Titulo, i.Descricao, i.Tipo,
-                i.Cidade, i.Estado, i.Preco, i.AreaM2,
-                i.Quartos, i.CriadoEm, i.Ativo))
+                i.Endereco.Cep, i.Endereco.Logradouro, i.Endereco.Bairro,
+                i.Endereco.Cidade, i.Endereco.Estado,
+                i.Endereco.Numero, i.Endereco.Complemento,
+                i.Preco, i.AreaM2, i.Quartos, i.CriadoEm, i.Ativo))
             .FirstOrDefaultAsync(ct);
 
         if (imovel is null)

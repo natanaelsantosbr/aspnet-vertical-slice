@@ -34,7 +34,7 @@ public class ImovelController : ControllerBase
     }
 
     /// <summary>
-    /// Cadastra um novo imóvel.
+    /// Cadastra um novo imóvel. O endereço é enriquecido automaticamente via CEP.
     /// </summary>
     [HttpPost]
     [ProducesResponseType(typeof(CadastrarImovelResponse), StatusCodes.Status201Created)]
@@ -71,7 +71,7 @@ public class ImovelController : ControllerBase
     }
 
     /// <summary>
-    /// Retorna um imóvel pelo Id.
+    /// Retorna um imóvel pelo Id com endereço completo.
     /// </summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ObterImovelPorIdResponse), StatusCodes.Status200OK)]
@@ -87,7 +87,7 @@ public class ImovelController : ControllerBase
     }
 
     /// <summary>
-    /// Atualiza os dados de um imóvel existente.
+    /// Atualiza os dados de um imóvel. O endereço é re-enriquecido via CEP.
     /// </summary>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -103,8 +103,9 @@ public class ImovelController : ControllerBase
             request.Titulo,
             request.Descricao,
             request.Tipo,
-            request.Cidade,
-            request.Estado,
+            request.Cep,
+            request.Numero,
+            request.Complemento,
             request.Preco,
             request.AreaM2,
             request.Quartos);
@@ -123,7 +124,7 @@ public class ImovelController : ControllerBase
     }
 
     /// <summary>
-    /// Remove (desativa) um imóvel. Operação de soft delete.
+    /// Remove (desativa) um imóvel. Soft delete.
     /// </summary>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -139,15 +140,14 @@ public class ImovelController : ControllerBase
     }
 }
 
-/// <summary>
-/// Body do PUT — sem o Id (vem pela rota).
-/// </summary>
+/// <summary>Body do PUT — sem o Id (vem pela rota).</summary>
 public record AtualizarImovelRequest(
     string Titulo,
     string Descricao,
     TipoImovel Tipo,
-    string Cidade,
-    string Estado,
+    string Cep,
+    string Numero,
+    string? Complemento,
     decimal Preco,
     int AreaM2,
     int Quartos

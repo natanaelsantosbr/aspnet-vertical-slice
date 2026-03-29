@@ -1,5 +1,7 @@
 using FluentValidation;
 using Imoveis.Application.Common;
+using Imoveis.Domain.Interfaces;
+using Imoveis.Domain.ValueObjects;
 using Imoveis.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -11,6 +13,7 @@ public class AtualizarImovelHandler
 {
     private readonly AppDbContext _db;
     private readonly IValidator<AtualizarImovelCommand> _validator;
+    private readonly ICepService _cepService;
     private readonly IMemoryCache _cache;
     private readonly ListaCacheInvalidador _invalidador;
     private readonly ILogger<AtualizarImovelHandler> _logger;
@@ -18,12 +21,14 @@ public class AtualizarImovelHandler
     public AtualizarImovelHandler(
         AppDbContext db,
         IValidator<AtualizarImovelCommand> validator,
+        ICepService cepService,
         IMemoryCache cache,
         ListaCacheInvalidador invalidador,
         ILogger<AtualizarImovelHandler> logger)
     {
         _db = db;
         _validator = validator;
+        _cepService = cepService;
         _cache = cache;
         _invalidador = invalidador;
         _logger = logger;
@@ -48,12 +53,38 @@ public class AtualizarImovelHandler
         if (!imovel.Ativo)
             return Result<bool>.Falha("Não é possível atualizar um imóvel inativo.");
 
+        var resultadoCep = await _cepService.ConsultarAsync(command.Cep, ct);
+
+        switch (resultadoCep)
+        {
+            case ConsultarCepResultado.NaoEncontrado:
+                return Result<bool>.Falha(
+                    $"CEP '{command.Cep}' não encontrado. Verifique o CEP informado.");
+
+            case ConsultarCepResultado.ServicoIndisponivel ind:
+                _logger.LogWarning(
+                    "Falha ao consultar CEP {Cep} durante atualização do imóvel {ImovelId}: {Detalhe}",
+                    command.Cep, command.Id, ind.Detalhe);
+                return Result<bool>.Falha(
+                    "Serviço de consulta de CEP temporariamente indisponível. Tente novamente em instantes.");
+        }
+
+        var encontrado = (ConsultarCepResultado.Encontrado)resultadoCep;
+
+        var endereco = Endereco.Criar(
+            encontrado.Cep,
+            encontrado.Logradouro,
+            encontrado.Bairro,
+            encontrado.Cidade,
+            encontrado.Estado,
+            command.Numero,
+            command.Complemento);
+
         imovel.Atualizar(
             command.Titulo,
             command.Descricao,
             command.Tipo,
-            command.Cidade,
-            command.Estado,
+            endereco,
             command.Preco,
             command.AreaM2,
             command.Quartos);

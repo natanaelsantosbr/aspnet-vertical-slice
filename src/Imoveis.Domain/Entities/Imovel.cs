@@ -1,4 +1,5 @@
 using Imoveis.Domain.Enums;
+using Imoveis.Domain.ValueObjects;
 
 namespace Imoveis.Domain.Entities;
 
@@ -8,8 +9,7 @@ public class Imovel
     public string Titulo { get; private set; } = string.Empty;
     public string Descricao { get; private set; } = string.Empty;
     public TipoImovel Tipo { get; private set; }
-    public string Cidade { get; private set; } = string.Empty;
-    public string Estado { get; private set; } = string.Empty;
+    public Endereco Endereco { get; private set; } = null!;
     public decimal Preco { get; private set; }
     public int AreaM2 { get; private set; }
     public int Quartos { get; private set; }
@@ -25,8 +25,7 @@ public class Imovel
         string titulo,
         string descricao,
         TipoImovel tipo,
-        string cidade,
-        string estado,
+        Endereco endereco,
         decimal preco,
         int areaM2,
         int quartos)
@@ -37,8 +36,7 @@ public class Imovel
             Titulo = titulo,
             Descricao = descricao,
             Tipo = tipo,
-            Cidade = cidade,
-            Estado = estado,
+            Endereco = endereco,
             Preco = preco,
             AreaM2 = areaM2,
             Quartos = quartos,
@@ -51,8 +49,7 @@ public class Imovel
         string titulo,
         string descricao,
         TipoImovel tipo,
-        string cidade,
-        string estado,
+        Endereco endereco,
         decimal preco,
         int areaM2,
         int quartos)
@@ -60,8 +57,7 @@ public class Imovel
         Titulo = titulo;
         Descricao = descricao;
         Tipo = tipo;
-        Cidade = cidade;
-        Estado = estado;
+        Endereco = endereco;
         Preco = preco;
         AreaM2 = areaM2;
         Quartos = quartos;

@@ -6,6 +6,7 @@ public record ImovelResumoDto(
     Guid Id,
     string Titulo,
     TipoImovel Tipo,
+    string Cep,
     string Cidade,
     string Estado,
     decimal Preco,
