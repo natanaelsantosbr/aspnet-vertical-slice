@@ -4,7 +4,9 @@ using Imoveis.Application.Features.Imoveis.ConsultarImoveis;
 using Imoveis.Application.Features.Imoveis.ObterImovelPorId;
 using Imoveis.Application.Features.Imoveis.RemoverImovel;
 using Imoveis.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Imoveis.API.Features.Imoveis;
 
@@ -35,10 +37,14 @@ public class ImovelController : ControllerBase
 
     /// <summary>
     /// Cadastra um novo imóvel. O endereço é enriquecido automaticamente via CEP.
+    /// Requer autenticação.
     /// </summary>
     [HttpPost]
+    [Authorize]
+    [EnableRateLimiting("escrita")]
     [ProducesResponseType(typeof(CadastrarImovelResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Cadastrar(
         [FromBody] CadastrarImovelCommand command,
         CancellationToken ct)
@@ -55,6 +61,7 @@ public class ImovelController : ControllerBase
     /// Consulta imóveis com filtros opcionais.
     /// </summary>
     [HttpGet]
+    [EnableRateLimiting("leitura")]
     [ProducesResponseType(typeof(ConsultarImoveisResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Consultar(
         [FromQuery] string? cidade,
@@ -74,6 +81,7 @@ public class ImovelController : ControllerBase
     /// Retorna um imóvel pelo Id com endereço completo.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [EnableRateLimiting("leitura")]
     [ProducesResponseType(typeof(ObterImovelPorIdResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ObterPorId(Guid id, CancellationToken ct)
@@ -88,11 +96,15 @@ public class ImovelController : ControllerBase
 
     /// <summary>
     /// Atualiza os dados de um imóvel. O endereço é re-enriquecido via CEP.
+    /// Requer autenticação.
     /// </summary>
     [HttpPut("{id:guid}")]
+    [Authorize]
+    [EnableRateLimiting("escrita")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Atualizar(
         Guid id,
         [FromBody] AtualizarImovelRequest request,
@@ -125,10 +137,14 @@ public class ImovelController : ControllerBase
 
     /// <summary>
     /// Remove (desativa) um imóvel. Soft delete.
+    /// Requer autenticação.
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [Authorize]
+    [EnableRateLimiting("escrita")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Remover(Guid id, CancellationToken ct)
     {
         var result = await _removerHandler.HandleAsync(new RemoverImovelCommand(id), ct);
